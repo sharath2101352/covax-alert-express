@@ -1,5 +1,48 @@
 extends layout
 
 block content
-  h1= title
-  p Welcome to #{title}
+  .form-body
+  .row
+    .form-holder
+      .form-content
+        .form-items
+          h3 Register Today
+          p Fill in the data below.
+          form.requires-validation(novalidate='')
+            .col-md-12
+              select.form-select.mt-3(required='')
+                option(selected='' disabled='' value='') Select District
+                option(value='582') Adilabad
+                option(value='583') Bhadradri Kothagudem
+                option(value='581') Hyderabad
+                option(value='584') Jagtial
+                option(value='585') Jangaon
+                option(value='586') Jayashankar Bhupalpally
+                option(value='587') Jogulamba Gadwal
+                option(value='588') Kamareddy
+                option(value='589') Karimnagar
+                option(value='590') Khammam
+                option(value='591') Kumuram Bheem
+                option(value='592') Mahabubabad
+                option(value='593') Mahabubnagar
+                option(value='594') Mancherial
+                option(value='595') Medak
+                option(value='596') Medchal
+                option(value='612') Mulugu
+                option(value='597') Nagarkurnool
+                option(value='598') Nalgonda
+                option(value='613') Narayanpet
+                option(value='599') Nirmal
+                option(value='600') Nizamabad
+                option(value='601') Peddapalli
+                option(value='602') Rajanna Sircilla
+                option(value='603') Rangareddy
+                option(value='604') Sangareddy
+                option(value='605') Siddipet
+                option(value='606') Suryapet
+                option(value='607') Vikarabad
+                option(value='608') Wanaparthy
+                option(value='609') Warangal(Rural)
+                option(value='610') Warangal(Urban)
+                option(value='611') Yadadri Bhuvanagiri
+  script(src='/js/main.js')
