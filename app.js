@@ -238,7 +238,7 @@ cron.schedule('* * * * *', async () => {
       alert.districts.forEach(function (dist) {
         const url = 'https://cdn-api.co-vin.in/api/v2/appointment/sessions/public/calendarByDistrict?district_id='+dist+'&date='+date;
         // get the centers for next 1 week
-        httpreq.get(url, (err, response, body) => {
+        httpreq.get(url, async (err, response, body) => {
               if (err) {
                 console.error(error)
               }
@@ -273,16 +273,15 @@ cron.schedule('* * * * *', async () => {
                     bot.sendMessage(alert.uid, 'Center: '+slot.name+', Location: '+slot.area+', Date: '+slot.date+', Agelimit: '+slot.ageLimit+', Vaccine: '+slot.vaccine+', Type: '+slot.type+', Slots: '+slot.available+', Dose1: '+slot.dose1+', Dose2: '+slot.dose2);
                     console.log('Notifaction sent to '+alert.uid);
                     session[slot.sid] = Date.now() + (60 * 60 * 1000);
-
-                    // update the user with alert snooze for this session
-                    AlertModel.findOne({ uid: alert.uid }).then(doc => {
-                      doc.sessions = session;
-                      doc.save();
-                      //sent respnse to client
-                    }).catch(err => {
-                      console.log('Error when updating session alert expiration.');
-                    });
                   }
+                });
+                // update the user with alert snooze for this session
+                await AlertModel.findOne({ uid: alert.uid }).then(doc => {
+                  doc.sessions = session;
+                  doc.save();
+                  //sent respnse to client
+                }).catch(err => {
+                  console.log('Error when updating session alert expiration.');
                 });
               }
         });
