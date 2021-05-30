@@ -82,10 +82,23 @@ var register = {};
 
 bot.onText(/\/start/, async (msg) => {
   
-  await bot.sendMessage(msg.chat.id, 'Hello Friend, I can help you to find slots to get covid vaccination in Telengana.');
-  await bot.sendMessage(msg.chat.id, 'Please select the districts to check available slots for notification. You can select multiple districts seperated by comma (,). Example to select karimnagar and pedapalli reply back as D-09,D-23');
+  await bot.sendMessage(msg.chat.id, 'Hello Friend, I can help you to find covid vaccination slots in Telengana.');
+  await bot.sendMessage(msg.chat.id, 'Please select the districts to check available slots for notification. You can select multiple districts seperated by comma (,). For Example reply as D-09,D-23 to select karimnagar and pedapalli.');
   bot.sendMessage(msg.chat.id, 'D-01: Adilabad\nD-02: Bhadradri Kothagudem\nD-03: Hyderabad\nD-04: Jagtial\nD-05: Jangaon\nD-06: Jayashankar Bhupalpally\nD-07: Jogulamba Gadwal\nD-08: Kamareddy\nD-09: Karimnagar\nD-10: Khammam\nD-11: Kumuram Bheem\nD-12: Mahabubabad\nD-13: Mahabubnagar\nD-14: Mancherial\nD-15: Medak\nD-16: Medchal\nD-17: Mulugu\nD-18: Nagarkurnool\nD-19: Nalgonda\nD-20: Narayanpet\nD-21: Nirmal\nD-22: Nizamabad\nD-23: Peddapalli\nD-24: Rajanna Sircilla\nD-25: Rangareddy\nD-26: Sangareddy\nD-27: Siddipet\nD-28: Suryapet\nD-29: Vikarabad\nD-30: Wanaparthy\nD-31: Warangal(Rural)\nD-32: Warangal(Urban)\nD-33: Yadadri Bhuvanagiri');
 });
+
+bot.onText(/\/stop/, async (msg) => {
+  // update the user with alert snooze for this session
+  AlertModel.findOne({ uid: msg.chat.id}).then(doc => {
+    doc.remove();
+    //sent respnse to client
+  }).catch(err => {
+    console.log('Error when deleting user notification');
+  });
+  console.log('User deleted : '+msg.chat.id);
+  bot.sendMessage(msg.chat.id, 'Thanks for using our cowinalert bot. \nTake Care.\nKUSHI Software Solutions.');
+});
+
 
 // District Selection
 bot.onText(/D-(.+)/, async (msg, match) => {
@@ -94,7 +107,7 @@ bot.onText(/D-(.+)/, async (msg, match) => {
   var distNameArray =[];
   const chatId = msg.chat.id;
   register.uid = chatId;
-  var resp = 'Ok, your selected districts: ';
+  var resp = 'Ok, your selected districts are: ';
   // extract the disctirct codes
   if(msg.text.includes(',')){
     var selectdDist = msg.text.split(',');
@@ -106,7 +119,7 @@ bot.onText(/D-(.+)/, async (msg, match) => {
   }else{
     distNameArray.push(district_codes[msg.text].name);
     distArray.push(district_codes[msg.text].id);
-    resp = 'Ok, your selected district: '+distNameArray.toString();
+    resp = 'Ok, your selected district is: '+distNameArray.toString();
   }
   register.districts = distArray;
   register.distNames = distNameArray;
@@ -114,7 +127,7 @@ bot.onText(/D-(.+)/, async (msg, match) => {
   await bot.sendMessage(chatId, resp);
 
   // Option to select Age limit
-  await bot.sendMessage(chatId, 'Select the Minimum Age Limit for Vacciantion. Example for 18 and above reply as A-02');
+  await bot.sendMessage(chatId, 'Select the Minimum Age Limit for Vacciantion. For Example reply as A-02, if you what noftification for 18+ age group.');
   bot.sendMessage(chatId, 'A-01: 45+\nA-02: 18+\nA-03: Any');
 
 });
@@ -133,29 +146,26 @@ bot.onText(/A-(.+)/, async (msg, match) => {
 
   
   try {
-    const newNotification = new AlertModel(register);
-    // save user
-    newNotification.save((err) => {
-      if (err) {
-        console.log('Error while saving profile to DB:', err);
-      }else{
-        console.log('Saving profile to DB successfull:');
-      }
-    });
+
+    const currentUser = await AlertModel.find({uid: chatId});
+    if (currentUser[0]!==undefined) {
+      await bot.sendMessage(chatId, 'You have already registerd to get notifications for : '+currentUser[0].distNames+'. To update this notification, you need to first delete it by replying /stop and then create new alert with /start');
+    }else{
+      const newNotification = new AlertModel(register);
+      // save user
+      newNotification.save((err) => {
+        if (err) {
+          console.log('Error while saving profile to DB:', err);
+        }else{
+          console.log('Saving profile to DB successfull:');
+        }
+      });
+    }
   } catch (error) {
     console.log(error);
   }
 });
 
-// Listen for any kind of message. There are different kinds of
-// messages.
-/*bot.on('message', (msg) => {
-  const chatId = msg.chat.id;
-  console.log('chatId: '+chatId);
-  console.log('message: '+msg.text);
-  // send a message to the chat acknowledging receipt of their message
-  bot.sendMessage(chatId, 'Received your message');
-});*/
 
 function formatDate(date) {
   var d = new Date(date),
@@ -188,6 +198,20 @@ function ageQualifier(age){
   return range;
 }
 
+
+/*function timeConverter(UNIX_timestamp){
+  var a = new Date(UNIX_timestamp);
+  var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var year = a.getFullYear();
+  var month = months[a.getMonth()];
+  var date = a.getDate();
+  var hour = a.getHours();
+  var min = a.getMinutes();
+  var sec = a.getSeconds();
+  var time = date + ' ' + month + ' ' + year + ' ' + hour + ':' + min + ':' + sec ;
+  return time;
+}*/
+
 // Scheduler to check slots for every 1 minute
 cron.schedule('* * * * *', async () => {
 
@@ -207,6 +231,10 @@ cron.schedule('* * * * *', async () => {
     // iterate over each user
     userArry.forEach(function (alert) {
       //iterate over each district
+      var session = alert.sessions[0];
+      if(session===undefined) {
+        session = {};
+      }
       alert.districts.forEach(function (dist) {
         const url = 'https://cdn-api.co-vin.in/api/v2/appointment/sessions/public/calendarByDistrict?district_id='+dist+'&date='+date;
         // get the centers for next 1 week
@@ -222,12 +250,16 @@ cron.schedule('* * * * *', async () => {
                   if(session.available_capacity>0 && (session.min_age_limit>Number(ageQualifier(alert.age)[0]) && session.min_age_limit<Number(ageQualifier(alert.age)[1]))){
                     var item = {};
                     item.name = center.name;
+                    item.cid = center.center_id;
+                    item.sid = session.session_id;
                     item.area = center.block_name;
                     item.date = session.date;
                     item.ageLimit = session.min_age_limit;
                     item.vaccine = session.vaccine;
                     item.type = center.fee_type;
                     item.available = session.available_capacity;
+                    item.dose1 = session.available_capacity_dose1;
+                    item.dose2 = session.available_capacity_dose2;
                     jsonObj.push(item);
                   }
                 });
@@ -236,12 +268,24 @@ cron.schedule('* * * * *', async () => {
               // send notification for this disctrict if any open slots found
               if(jsonObj.length>0){
                 jsonObj.forEach(function (slot) {
-                  bot.sendMessage(alert.uid, 'Center: '+slot.name+', Location: '+slot.area+', Date: '+slot.date+', Agelimit: '+slot.age+', Vaccine: '+slot.vaccine+', Type: '+slot.type+', Slots: '+slot.available); 
-                  console.log(Date.now());
+                  //avoid spam notifications
+                  if(alert.sessions[0] === undefined || alert.sessions[0][slot.sid] === undefined || alert.sessions[0][slot.sid]<Date.now()) {
+                    bot.sendMessage(alert.uid, 'Center: '+slot.name+', Location: '+slot.area+', Date: '+slot.date+', Agelimit: '+slot.ageLimit+', Vaccine: '+slot.vaccine+', Type: '+slot.type+', Slots: '+slot.available+', Dose1: '+slot.dose1+', Dose2: '+slot.dose2);
+                    console.log('Notifaction sent to '+alert.uid);
+                    session[slot.sid] = Date.now() + (60 * 60 * 1000);
+
+                    // update the user with alert snooze for this session
+                    AlertModel.findOne({ uid: alert.uid }).then(doc => {
+                      doc.sessions = session;
+                      doc.save();
+                      //sent respnse to client
+                    }).catch(err => {
+                      console.log('Error when updating session alert expiration.');
+                    });
+                  }
                 });
               }
         });
-
       });
     });
 });
